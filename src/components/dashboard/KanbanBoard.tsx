@@ -1,11 +1,12 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal, MessageCircle, Paperclip, Calendar } from "lucide-react";
 import { format } from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTasks } from "@/hooks/useTasks";
+import AddTaskDialog from "./AddTaskDialog";
 
 interface KanbanBoardProps {
   user: {
@@ -18,92 +19,28 @@ interface KanbanBoardProps {
 }
 
 const KanbanBoard = ({ user }: KanbanBoardProps) => {
-  const [tasks] = useState({
-    todo: [
-      {
-        id: "1",
-        title: "Implement user authentication",
-        description: "Add JWT-based authentication system",
-        priority: "high",
-        assignee: {
-          name: "John Doe",
-          avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=john"
-        },
-        dueDate: new Date(2024, 6, 25),
-        comments: 3,
-        attachments: 2,
-        labels: ["backend", "security"]
-      },
-      {
-        id: "2", 
-        title: "Design dashboard wireframes",
-        description: "Create wireframes for the main dashboard",
-        priority: "medium",
-        assignee: {
-          name: "Jane Smith",
-          avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=jane"
-        },
-        dueDate: new Date(2024, 6, 28),
-        comments: 1,
-        attachments: 0,
-        labels: ["design", "ui"]
-      }
-    ],
-    progress: [
-      {
-        id: "3",
-        title: "Build task management API",
-        description: "Create CRUD endpoints for task management",
-        priority: "high",
-        assignee: {
-          name: "Mike Johnson",
-          avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=mike"
-        },
-        dueDate: new Date(2024, 6, 30),
-        comments: 5,
-        attachments: 1,
-        labels: ["backend", "api"]
-      }
-    ],
-    review: [
-      {
-        id: "4",
-        title: "Test user registration flow",
-        description: "Comprehensive testing of the registration process",
-        priority: "medium",
-        assignee: {
-          name: "Sarah Wilson",
-          avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah"
-        },
-        dueDate: new Date(2024, 7, 2),
-        comments: 2,
-        attachments: 0,
-        labels: ["testing", "qa"]
-      }
-    ],
-    done: [
-      {
-        id: "5",
-        title: "Set up project repository",
-        description: "Initialize Git repository and basic project structure",
-        priority: "low",
-        assignee: {
-          name: "Alex Brown",
-          avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=alex"
-        },
-        dueDate: new Date(2024, 6, 20),
-        comments: 1,
-        attachments: 3,
-        labels: ["setup", "devops"]
-      }
-    ]
-  });
+  const { tasks, loading } = useTasks();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  const tasksByStatus = {
+    todo: tasks.filter(task => task.status === 'todo'),
+    progress: tasks.filter(task => task.status === 'progress'),
+    review: tasks.filter(task => task.status === 'review'),
+    done: tasks.filter(task => task.status === 'done')
+  };
 
   const columns = [
-    { id: "todo", title: "To Do", count: tasks.todo.length, color: "bg-gray-100" },
-    { id: "progress", title: "In Progress", count: tasks.progress.length, color: "bg-blue-100" },
-    { id: "review", title: "In Review", count: tasks.review.length, color: "bg-yellow-100" },
-    { id: "done", title: "Done", count: tasks.done.length, color: "bg-green-100" }
+    { id: "todo", title: "To Do", count: tasksByStatus.todo.length, color: "bg-gray-100" },
+    { id: "progress", title: "In Progress", count: tasksByStatus.progress.length, color: "bg-blue-100" },
+    { id: "review", title: "In Review", count: tasksByStatus.review.length, color: "bg-yellow-100" },
+    { id: "done", title: "Done", count: tasksByStatus.done.length, color: "bg-green-100" }
   ];
 
   const getPriorityColor = (priority: string) => {
@@ -126,7 +63,9 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
       security: "bg-red-100 text-red-800",
       qa: "bg-yellow-100 text-yellow-800",
       setup: "bg-gray-100 text-gray-800",
-      devops: "bg-indigo-100 text-indigo-800"
+      devops: "bg-indigo-100 text-indigo-800",
+      realtime: "bg-teal-100 text-teal-800",
+      mobile: "bg-rose-100 text-rose-800"
     };
     return colors[label as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
@@ -145,7 +84,7 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
           </div>
 
           <div className="space-y-3">
-            {tasks[column.id as keyof typeof tasks].map((task) => (
+            {tasksByStatus[column.id as keyof typeof tasksByStatus].map((task) => (
               <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
@@ -162,9 +101,11 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
                 </CardHeader>
                 
                 <CardContent className="pt-0 space-y-3">
-                  <p className="text-xs text-gray-600 leading-relaxed">
-                    {task.description}
-                  </p>
+                  {task.description && (
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      {task.description}
+                    </p>
+                  )}
 
                   <div className="flex flex-wrap gap-1">
                     {task.labels.map((label) => (
@@ -178,32 +119,34 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
                     ))}
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="h-3 w-3" />
-                      <span>{format(task.dueDate, "MMM dd")}</span>
+                  {task.due_date && (
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-3 w-3" />
+                        <span>{format(new Date(task.due_date), "MMM dd")}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {task.comments_count > 0 && (
+                          <div className="flex items-center space-x-1">
+                            <MessageCircle className="h-3 w-3" />
+                            <span>{task.comments_count}</span>
+                          </div>
+                        )}
+                        {task.attachments_count > 0 && (
+                          <div className="flex items-center space-x-1">
+                            <Paperclip className="h-3 w-3" />
+                            <span>{task.attachments_count}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {task.comments > 0 && (
-                        <div className="flex items-center space-x-1">
-                          <MessageCircle className="h-3 w-3" />
-                          <span>{task.comments}</span>
-                        </div>
-                      )}
-                      {task.attachments > 0 && (
-                        <div className="flex items-center space-x-1">
-                          <Paperclip className="h-3 w-3" />
-                          <span>{task.attachments}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={task.assignee.avatar} alt={task.assignee.name} />
+                      <AvatarImage src={task.assignee_avatar || ''} alt={task.assignee_name || ''} />
                       <AvatarFallback className="text-xs">
-                        {task.assignee.name.split(' ').map(n => n[0]).join('')}
+                        {task.assignee_name?.split(' ').map(n => n[0]).join('') || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <Badge variant="outline" className="text-xs capitalize">
@@ -217,9 +160,7 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
             {column.id !== "done" && (
               <Card className="border-dashed border-2 border-gray-300 hover:border-gray-400 transition-colors">
                 <CardContent className="p-4 text-center">
-                  <Button variant="ghost" className="text-gray-500 text-sm">
-                    + Add a task
-                  </Button>
+                  <AddTaskDialog status={column.id} />
                 </CardContent>
               </Card>
             )}
