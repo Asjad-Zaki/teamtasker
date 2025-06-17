@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bell, LogOut, Plus, Search, Settings, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/hooks/useAuth";
 import KanbanBoard from "./KanbanBoard";
 import UserManagement from "./UserManagement";
 import ProjectOverview from "./ProjectOverview";
@@ -22,7 +23,8 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
-const Dashboard = ({ user, onLogout }: DashboardProps) => {
+const Dashboard = ({ user }: DashboardProps) => {
+  const { signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("tasks");
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -39,6 +41,10 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
 
   const canManageUsers = user.role === "admin";
   const canManageProjects = user.role === "admin" || user.role === "project_manager";
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -90,7 +96,7 @@ const Dashboard = ({ user, onLogout }: DashboardProps) => {
               </div>
             </div>
 
-            <Button variant="ghost" size="sm" onClick={onLogout}>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
