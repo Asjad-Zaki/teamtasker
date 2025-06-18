@@ -147,10 +147,12 @@ export const useTasks = () => {
     fetchTasks();
   }, []);
 
-  // Set up real-time subscription for tasks
+  // Set up real-time subscription for tasks with unique channel name
   useEffect(() => {
+    const channelName = `tasks-realtime-${Date.now()}-${Math.random()}`;
+    
     const channel = supabase
-      .channel('tasks-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {

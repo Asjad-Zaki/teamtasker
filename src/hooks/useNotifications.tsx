@@ -102,12 +102,14 @@ export const useNotifications = () => {
     fetchNotifications();
   }, [user]);
 
-  // Set up real-time subscription for notifications
+  // Set up real-time subscription for notifications with unique channel name
   useEffect(() => {
     if (!user) return;
 
+    const channelName = `notifications-realtime-${user.id}-${Date.now()}-${Math.random()}`;
+
     const channel = supabase
-      .channel('notifications-changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
