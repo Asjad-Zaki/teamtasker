@@ -2,29 +2,30 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export interface Task {
   id: string;
   title: string;
-  description: string | null;
+  description?: string;
   status: 'todo' | 'progress' | 'review' | 'done';
-  priority: 'low' | 'medium' | 'high';
-  assignee_id: string | null;
-  assignee_name: string | null;
-  assignee_avatar: string | null;
-  due_date: string | null;
-  comments_count: number;
-  attachments_count: number;
-  labels: string[];
-  created_at: string;
-  updated_at: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  assignee_id?: string;
+  assignee_name?: string;
+  assignee_avatar?: string;
+  due_date?: string;
+  labels?: string[];
+  comments_count?: number;
+  attachments_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const useTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { createNotification } = useNotifications();
 
   const fetchTasks = async () => {
     try {
@@ -35,114 +36,110 @@ export const useTasks = () => {
 
       if (error) throw error;
       
-      // Type assertion to ensure compatibility with our Task interface
-      const typedTasks = (data || []).map(task => ({
+      // Type assertion to ensure compatibility
+      setTasks((data || []).map(task => ({
         ...task,
-        status: task.status as 'todo' | 'progress' | 'review' | 'done',
-        priority: task.priority as 'low' | 'medium' | 'high',
-        labels: task.labels || [],
-        comments_count: task.comments_count || 0,
-        attachments_count: task.attachments_count || 0
-      })) as Task[];
-      
-      setTasks(typedTasks);
+        status: task.status as Task['status'],
+        priority: task.priority as Task['priority']
+      })));
     } catch (error) {
       console.error('Error fetching tasks:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch tasks",
-        variant: "destructive"
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const createTask = async (taskData: {
-    title: string;
-    description?: string;
-    status?: string;
-    priority?: string;
-    due_date?: string;
-    labels?: string[];
-  }) => {
+  const createTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .insert([{
-          ...taskData,
-          assignee_name: user?.email?.split('@')[0] || 'Unassigned',
-          assignee_avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.email || 'default'}`
-        }])
+        .insert([taskData])
         .select()
         .single();
 
       if (error) throw error;
 
-      // Type assertion for the new task
-      const typedTask = {
+      const newTask = {
         ...data,
-        status: data.status as 'todo' | 'progress' | 'review' | 'done',
-        priority: data.priority as 'low' | 'medium' | 'high',
-        labels: data.labels || [],
-        comments_count: data.comments_count || 0,
-        attachments_count: data.attachments_count || 0
-      } as Task;
+        status: data.status as Task['status'],
+        priority: data.priority as Task['priority']
+      };
 
-      setTasks(prev => [typedTask, ...prev]);
-      toast({
-        title: "Success",
-        description: "Task created successfully"
-      });
+      setTasks(prev => [newTask, ...prev]);
 
-      return { data: typedTask, error: null };
+      // Create notification for task creation
+      if (taskData.assignee_id && taskData.assignee_id !== user?.id) {
+        await createNotification({
+          user_id: taskData.assignee_id,
+          type: 'user_added',
+          title: 'New Task Assigned',
+          message: `You have been assigned to task: ${taskData.title}`,
+          read: false,
+          related_task_id: newTask.id
+        });
+      }
+
+      return { data: newTask, error: null };
     } catch (error) {
       console.error('Error creating task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create task",
-        variant: "destructive"
-      });
       return { data: null, error };
     }
   };
 
-  const updateTask = async (id: string, updates: Partial<Task>) => {
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
     try {
       const { data, error } = await supabase
         .from('tasks')
         .update(updates)
-        .eq('id', id)
+        .eq('id', taskId)
         .select()
         .single();
 
       if (error) throw error;
 
-      // Type assertion for the updated task
-      const typedTask = {
+      const updatedTask = {
         ...data,
-        status: data.status as 'todo' | 'progress' | 'review' | 'done',
-        priority: data.priority as 'low' | 'medium' | 'high',
-        labels: data.labels || [],
-        comments_count: data.comments_count || 0,
-        attachments_count: data.attachments_count || 0
-      } as Task;
+        status: data.status as Task['status'],
+        priority: data.priority as Task['priority']
+      };
 
-      setTasks(prev => prev.map(task => task.id === id ? typedTask : task));
-      toast({
-        title: "Success",
-        description: "Task updated successfully"
-      });
+      setTasks(prev => prev.map(task => 
+        task.id === taskId ? updatedTask : task
+      ));
 
-      return { data: typedTask, error: null };
+      // Create notification for status change to 'done'
+      if (updates.status === 'done' && updatedTask.assignee_id) {
+        await createNotification({
+          user_id: updatedTask.assignee_id,
+          type: 'task_completed',
+          title: 'Task Completed',
+          message: `Task "${updatedTask.title}" has been marked as completed`,
+          read: false,
+          related_task_id: taskId
+        });
+      }
+
+      return { data: updatedTask, error: null };
     } catch (error) {
       console.error('Error updating task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update task",
-        variant: "destructive"
-      });
       return { data: null, error };
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(prev => prev.filter(task => task.id !== taskId));
+      return { error: null };
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      return { error };
     }
   };
 
@@ -150,11 +147,35 @@ export const useTasks = () => {
     fetchTasks();
   }, []);
 
+  // Set up real-time subscription for tasks
+  useEffect(() => {
+    const channel = supabase
+      .channel('tasks-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks'
+        },
+        (payload) => {
+          console.log('Task change received:', payload);
+          fetchTasks(); // Refresh tasks when changes occur
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return {
     tasks,
     loading,
     createTask,
     updateTask,
+    deleteTask,
     refetch: fetchTasks
   };
 };

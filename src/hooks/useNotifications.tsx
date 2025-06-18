@@ -23,7 +23,8 @@ export const useNotifications = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // Use type assertion since the notifications table is new and types haven't been regenerated
+      const { data, error } = await (supabase as any)
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
@@ -34,7 +35,7 @@ export const useNotifications = () => {
       setNotifications(data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      // For now, use mock data if table doesn't exist
+      // For now, use mock data if table doesn't exist or there's an error
       setNotifications([
         {
           id: "1",
@@ -62,7 +63,8 @@ export const useNotifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const { error } = await supabase
+      // Use type assertion for the update operation
+      const { error } = await (supabase as any)
         .from('notifications')
         .update({ read: true })
         .eq('id', notificationId);
@@ -79,10 +81,51 @@ export const useNotifications = () => {
     }
   };
 
+  const createNotification = async (notification: Omit<Notification, 'id' | 'created_at'>) => {
+    try {
+      const { error } = await (supabase as any)
+        .from('notifications')
+        .insert([notification]);
+
+      if (!error) {
+        // Refresh notifications after creating a new one
+        fetchNotifications();
+      }
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     fetchNotifications();
+  }, [user]);
+
+  // Set up real-time subscription for notifications
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('notifications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Notification change received:', payload);
+          fetchNotifications(); // Refresh notifications when changes occur
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   return {
@@ -90,6 +133,7 @@ export const useNotifications = () => {
     loading,
     unreadCount,
     markAsRead,
+    createNotification,
     refetch: fetchNotifications
   };
 };
