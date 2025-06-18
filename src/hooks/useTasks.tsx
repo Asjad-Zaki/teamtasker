@@ -34,7 +34,18 @@ export const useTasks = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTasks(data || []);
+      
+      // Type assertion to ensure compatibility with our Task interface
+      const typedTasks = (data || []).map(task => ({
+        ...task,
+        status: task.status as 'todo' | 'progress' | 'review' | 'done',
+        priority: task.priority as 'low' | 'medium' | 'high',
+        labels: task.labels || [],
+        comments_count: task.comments_count || 0,
+        attachments_count: task.attachments_count || 0
+      })) as Task[];
+      
+      setTasks(typedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast({
@@ -68,13 +79,23 @@ export const useTasks = () => {
 
       if (error) throw error;
 
-      setTasks(prev => [data, ...prev]);
+      // Type assertion for the new task
+      const typedTask = {
+        ...data,
+        status: data.status as 'todo' | 'progress' | 'review' | 'done',
+        priority: data.priority as 'low' | 'medium' | 'high',
+        labels: data.labels || [],
+        comments_count: data.comments_count || 0,
+        attachments_count: data.attachments_count || 0
+      } as Task;
+
+      setTasks(prev => [typedTask, ...prev]);
       toast({
         title: "Success",
         description: "Task created successfully"
       });
 
-      return { data, error: null };
+      return { data: typedTask, error: null };
     } catch (error) {
       console.error('Error creating task:', error);
       toast({
@@ -97,13 +118,23 @@ export const useTasks = () => {
 
       if (error) throw error;
 
-      setTasks(prev => prev.map(task => task.id === id ? data : task));
+      // Type assertion for the updated task
+      const typedTask = {
+        ...data,
+        status: data.status as 'todo' | 'progress' | 'review' | 'done',
+        priority: data.priority as 'low' | 'medium' | 'high',
+        labels: data.labels || [],
+        comments_count: data.comments_count || 0,
+        attachments_count: data.attachments_count || 0
+      } as Task;
+
+      setTasks(prev => prev.map(task => task.id === id ? typedTask : task));
       toast({
         title: "Success",
         description: "Task updated successfully"
       });
 
-      return { data, error: null };
+      return { data: typedTask, error: null };
     } catch (error) {
       console.error('Error updating task:', error);
       toast({
