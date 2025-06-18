@@ -7,10 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus, X } from "lucide-react";
-import { useTasks } from "@/hooks/useTasks";
+import { useTasks, Task } from "@/hooks/useTasks";
 
 interface AddTaskDialogProps {
-  status?: string;
+  status?: Task['status'];
   trigger?: React.ReactNode;
 }
 
@@ -18,7 +18,7 @@ const AddTaskDialog = ({ status = 'todo', trigger }: AddTaskDialogProps) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState('medium');
+  const [priority, setPriority] = useState<Task['priority']>('medium');
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [newLabel, setNewLabel] = useState('');
   const { createTask } = useTasks();
@@ -36,8 +36,8 @@ const AddTaskDialog = ({ status = 'todo', trigger }: AddTaskDialogProps) => {
     const { error } = await createTask({
       title: title.trim(),
       description: description.trim() || undefined,
-      status,
-      priority,
+      status: status as Task['status'],
+      priority: priority as Task['priority'],
       labels: selectedLabels
     });
 
@@ -100,7 +100,7 @@ const AddTaskDialog = ({ status = 'todo', trigger }: AddTaskDialogProps) => {
           </div>
 
           <div>
-            <Select value={priority} onValueChange={setPriority}>
+            <Select value={priority} onValueChange={(value: Task['priority']) => setPriority(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select priority" />
               </SelectTrigger>
@@ -108,6 +108,7 @@ const AddTaskDialog = ({ status = 'todo', trigger }: AddTaskDialogProps) => {
                 <SelectItem value="low">Low Priority</SelectItem>
                 <SelectItem value="medium">Medium Priority</SelectItem>
                 <SelectItem value="high">High Priority</SelectItem>
+                <SelectItem value="urgent">Urgent Priority</SelectItem>
               </SelectContent>
             </Select>
           </div>
