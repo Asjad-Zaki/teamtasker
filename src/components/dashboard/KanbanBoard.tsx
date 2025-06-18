@@ -18,6 +18,8 @@ interface KanbanBoardProps {
   };
 }
 
+type TaskStatus = 'todo' | 'progress' | 'review' | 'done';
+
 const KanbanBoard = ({ user }: KanbanBoardProps) => {
   const { tasks, loading, updateTask } = useTasks();
 
@@ -36,7 +38,7 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
     done: tasks.filter(task => task.status === 'done')
   };
 
-  const columns = [
+  const columns: { id: TaskStatus; title: string; count: number; color: string }[] = [
     { id: "todo", title: "To Do", count: tasksByStatus.todo.length, color: "bg-gray-100" },
     { id: "progress", title: "In Progress", count: tasksByStatus.progress.length, color: "bg-blue-100" },
     { id: "review", title: "In Review", count: tasksByStatus.review.length, color: "bg-yellow-100" },
@@ -70,9 +72,9 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
     return colors[label as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
 
-  const handleStatusChange = async (taskId: string, newStatus: string) => {
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
     console.log(`Moving task ${taskId} to ${newStatus}`);
-    await updateTask(taskId, { status: newStatus as 'todo' | 'progress' | 'review' | 'done' });
+    await updateTask(taskId, { status: newStatus });
   };
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
@@ -83,7 +85,7 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, newStatus: string) => {
+  const handleDrop = (e: React.DragEvent, newStatus: TaskStatus) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('text/plain');
     handleStatusChange(taskId, newStatus);
@@ -108,7 +110,7 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
           </div>
 
           <div className="space-y-3">
-            {tasksByStatus[column.id as keyof typeof tasksByStatus].map((task) => (
+            {tasksByStatus[column.id].map((task) => (
               <Card 
                 key={task.id} 
                 className="hover:shadow-md transition-shadow cursor-move"
@@ -137,7 +139,7 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
                   )}
 
                   <div className="flex flex-wrap gap-1">
-                    {task.labels.map((label) => (
+                    {task.labels && task.labels.map((label) => (
                       <Badge 
                         key={label} 
                         variant="secondary" 
@@ -155,13 +157,13 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
                         <span>{format(new Date(task.due_date), "MMM dd")}</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {task.comments_count > 0 && (
+                        {task.comments_count && task.comments_count > 0 && (
                           <div className="flex items-center space-x-1">
                             <MessageCircle className="h-3 w-3" />
                             <span>{task.comments_count}</span>
                           </div>
                         )}
-                        {task.attachments_count > 0 && (
+                        {task.attachments_count && task.attachments_count > 0 && (
                           <div className="flex items-center space-x-1">
                             <Paperclip className="h-3 w-3" />
                             <span>{task.attachments_count}</span>
