@@ -197,7 +197,7 @@ const LandingPage = () => {
               <h3 className="text-xl font-bold">TeamTasker</h3>
             </div>
             <p className="text-gray-400">
-              © 2024 TeamTasker. Built with modern technology for modern teams.
+              © 2025 TeamTasker. Built by Zaki with modern technology for modern teams.
             </p>
           </div>
         </div>
