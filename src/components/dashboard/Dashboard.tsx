@@ -7,10 +7,12 @@ import { Bell, LogOut, Plus, Search, Settings, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
+import { useNotifications } from "@/hooks/useNotifications";
 import KanbanBoard from "./KanbanBoard";
 import UserManagement from "./UserManagement";
 import ProjectOverview from "./ProjectOverview";
 import NotificationPanel from "./NotificationPanel";
+import AddTaskDialog from "./AddTaskDialog";
 
 interface DashboardProps {
   user: {
@@ -25,6 +27,7 @@ interface DashboardProps {
 
 const Dashboard = ({ user }: DashboardProps) => {
   const { signOut } = useAuth();
+  const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState("tasks");
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -76,9 +79,11 @@ const Dashboard = ({ user }: DashboardProps) => {
               className="relative"
             >
               <Bell className="h-4 w-4" />
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
-                3
-              </Badge>
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
+                  {unreadCount}
+                </Badge>
+              )}
             </Button>
 
             <div className="flex items-center space-x-2">
@@ -139,10 +144,14 @@ const Dashboard = ({ user }: DashboardProps) => {
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Task Board</h3>
                 {canManageProjects && (
-                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Task
-                  </Button>
+                  <AddTaskDialog 
+                    trigger={
+                      <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                        <Plus className="h-4 w-4 mr-2" />
+                        New Task
+                      </Button>
+                    }
+                  />
                 )}
               </div>
               <KanbanBoard user={user} />

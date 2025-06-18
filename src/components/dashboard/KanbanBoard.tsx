@@ -19,7 +19,7 @@ interface KanbanBoardProps {
 }
 
 const KanbanBoard = ({ user }: KanbanBoardProps) => {
-  const { tasks, loading } = useTasks();
+  const { tasks, loading, updateTask } = useTasks();
 
   if (loading) {
     return (
@@ -70,10 +70,34 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
     return colors[label as keyof typeof colors] || "bg-gray-100 text-gray-800";
   };
 
+  const handleStatusChange = async (taskId: string, newStatus: string) => {
+    console.log(`Moving task ${taskId} to ${newStatus}`);
+    await updateTask(taskId, { status: newStatus as 'todo' | 'progress' | 'review' | 'done' });
+  };
+
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    e.dataTransfer.setData('text/plain', taskId);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain');
+    handleStatusChange(taskId, newStatus);
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {columns.map((column) => (
-        <div key={column.id} className="space-y-4">
+        <div 
+          key={column.id} 
+          className="space-y-4"
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, column.id)}
+        >
           <div className={`${column.color} rounded-lg p-4`}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">{column.title}</h3>
@@ -85,7 +109,12 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
 
           <div className="space-y-3">
             {tasksByStatus[column.id as keyof typeof tasksByStatus].map((task) => (
-              <Card key={task.id} className="hover:shadow-md transition-shadow cursor-pointer">
+              <Card 
+                key={task.id} 
+                className="hover:shadow-md transition-shadow cursor-move"
+                draggable
+                onDragStart={(e) => handleDragStart(e, task.id)}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-2">
