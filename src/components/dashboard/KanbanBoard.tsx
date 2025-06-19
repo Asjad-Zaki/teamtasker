@@ -14,7 +14,7 @@ interface KanbanBoardProps {
 }
 
 const KanbanBoard = ({ user }: KanbanBoardProps) => {
-  const { tasks, loading, updateTask } = useTasks();
+  const { tasks, loading, updateTask, deleteTask } = useTasks();
 
   if (loading) {
     return (
@@ -57,6 +57,8 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
     handleStatusChange(taskId, newStatus);
   };
 
+  const canEdit = user.role === 'admin' || user.role === 'project_manager' || user.role === 'developer';
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {columns.map((column) => (
@@ -69,6 +71,9 @@ const KanbanBoard = ({ user }: KanbanBoardProps) => {
           onDragStart={handleDragStart}
           getPriorityColor={getPriorityColor}
           getLabelColor={getLabelColor}
+          onUpdateTask={updateTask}
+          onDeleteTask={deleteTask}
+          canEdit={canEdit}
         />
       ))}
     </div>

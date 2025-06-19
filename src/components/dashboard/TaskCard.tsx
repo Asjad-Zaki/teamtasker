@@ -2,22 +2,64 @@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, MessageCircle, Paperclip, Calendar } from "lucide-react";
+import { MoreHorizontal, MessageCircle, Paperclip, Calendar, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Task } from "@/hooks/useTasks";
+import TaskEditDialog from "./TaskEditDialog";
+import { toast } from "@/hooks/use-toast";
 
 interface TaskCardProps {
   task: Task;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
   getPriorityColor: (priority: string) => string;
   getLabelColor: (label: string) => string;
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => Promise<{ data: any; error: any }>;
+  onDeleteTask?: (taskId: string) => Promise<{ error: any }>;
+  canEdit?: boolean;
 }
 
-const TaskCard = ({ task, onDragStart, getPriorityColor, getLabelColor }: TaskCardProps) => {
+const TaskCard = ({ 
+  task, 
+  onDragStart, 
+  getPriorityColor, 
+  getLabelColor,
+  onUpdateTask,
+  onDeleteTask,
+  canEdit = true
+}: TaskCardProps) => {
+  const handleDeleteTask = async () => {
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      try {
+        if (onDeleteTask) {
+          const { error } = await onDeleteTask(task.id);
+          
+          if (error) {
+            toast({
+              title: "Error",
+              description: "Failed to delete task.",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Success",
+              description: "Task deleted successfully.",
+            });
+          }
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete task.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   return (
     <Card 
-      className="hover:shadow-md transition-shadow cursor-move"
+      className="hover:shadow-md transition-shadow cursor-move relative group"
       draggable
       onDragStart={(e) => onDragStart(e, task.id)}
     >
@@ -29,9 +71,34 @@ const TaskCard = ({ task, onDragStart, getPriorityColor, getLabelColor }: TaskCa
               {task.title}
             </CardTitle>
           </div>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-            <MoreHorizontal className="h-3 w-3" />
-          </Button>
+          {canEdit && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+              {onUpdateTask && (
+                <TaskEditDialog 
+                  task={task}
+                  onUpdateTask={onUpdateTask}
+                  trigger={
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  }
+                />
+              )}
+              {onDeleteTask && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                  onClick={handleDeleteTask}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
       </CardHeader>
       

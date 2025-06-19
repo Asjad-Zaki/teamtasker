@@ -20,6 +20,9 @@ interface KanbanColumnProps {
   onDragStart: (e: React.DragEvent, taskId: string) => void;
   getPriorityColor: (priority: string) => string;
   getLabelColor: (label: string) => string;
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => Promise<{ data: any; error: any }>;
+  onDeleteTask?: (taskId: string) => Promise<{ error: any }>;
+  canEdit?: boolean;
 }
 
 const KanbanColumn = ({
@@ -29,7 +32,10 @@ const KanbanColumn = ({
   onDrop,
   onDragStart,
   getPriorityColor,
-  getLabelColor
+  getLabelColor,
+  onUpdateTask,
+  onDeleteTask,
+  canEdit = true
 }: KanbanColumnProps) => {
   return (
     <div 
@@ -54,10 +60,13 @@ const KanbanColumn = ({
             onDragStart={onDragStart}
             getPriorityColor={getPriorityColor}
             getLabelColor={getLabelColor}
+            onUpdateTask={onUpdateTask}
+            onDeleteTask={onDeleteTask}
+            canEdit={canEdit}
           />
         ))}
 
-        {column.id !== "done" && (
+        {column.id !== "done" && canEdit && (
           <Card className="border-dashed border-2 border-gray-300 hover:border-gray-400 transition-colors">
             <CardContent className="p-4 text-center">
               <AddTaskDialog status={column.id} />

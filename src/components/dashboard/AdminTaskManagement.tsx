@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { AdminTask } from "@/hooks/useAdminData";
 import { toast } from "@/hooks/use-toast";
+import TaskEditDialog from "./TaskEditDialog";
 
 interface AdminTaskManagementProps {
   tasks: AdminTask[];
@@ -302,9 +303,19 @@ const AdminTaskManagement = ({
                   </Select>
                   {canManageAll && (
                     <>
-                      <Button variant="outline" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <TaskEditDialog 
+                        task={{
+                          ...task,
+                          status: task.status as any,
+                          priority: task.priority as any
+                        }}
+                        onUpdateTask={updateTask}
+                        trigger={
+                          <Button variant="outline" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
                       <Button 
                         variant="outline" 
                         size="sm" 
