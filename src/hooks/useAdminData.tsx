@@ -2,31 +2,31 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
 
 export interface AdminUser {
   id: string;
-  first_name: string | null;
-  last_name: string | null;
-  avatar_url: string | null;
+  email: string;
+  first_name?: string;
+  last_name?: string;
   role: string;
+  avatar_url?: string;
   created_at: string;
   updated_at: string;
-  email?: string;
-  last_active?: string;
-  status: 'active' | 'inactive';
 }
 
 export interface AdminTask {
   id: string;
   title: string;
-  description: string | null;
+  description?: string;
   status: 'todo' | 'progress' | 'review' | 'done';
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  assignee_id: string | null;
-  assignee_name: string | null;
-  assignee_avatar: string | null;
-  due_date: string | null;
+  assignee_id?: string;
+  assignee_name?: string;
+  assignee_avatar?: string;
+  due_date?: string;
+  labels?: string[];
+  comments_count?: number;
+  attachments_count?: number;
   created_at: string;
   updated_at: string;
 }
@@ -45,21 +45,9 @@ export const useAdminData = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      const mappedUsers: AdminUser[] = (data || []).map(profile => ({
-        ...profile,
-        status: 'active' as const,
-        last_active: '2 hours ago' // Mock data for now
-      }));
-
-      setUsers(mappedUsers);
+      setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch users",
-        variant: "destructive"
-      });
     }
   };
 
@@ -67,19 +55,34 @@ export const useAdminData = () => {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select('*')
+        .select(`
+          *,
+          assignee:profiles!tasks_assignee_id_fkey(
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      // Transform the data to match our interface with proper type assertions
+      const transformedTasks = (data || []).map(task => ({
+        ...task,
+        status: task.status as AdminTask['status'],
+        priority: task.priority as AdminTask['priority'],
+        assignee_name: task.assignee ? 
+          `${task.assignee.first_name || ''} ${task.assignee.last_name || ''}`.trim() : 
+          undefined,
+        assignee_avatar: task.assignee?.avatar_url,
+        comments_count: 0,
+        attachments_count: 0
+      }));
 
-      setTasks(data || []);
+      setTasks(transformedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch tasks",
-        variant: "destructive"
-      });
     }
   };
 
@@ -89,47 +92,14 @@ export const useAdminData = () => {
     setLoading(false);
   };
 
-  const updateUserRole = async (userId: string, newRole: string) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole, updated_at: new Date().toISOString() })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      setUsers(prev => prev.map(user => 
-        user.id === userId ? { ...user, role: newRole } : user
-      ));
-
-      toast({
-        title: "Success",
-        description: `User role updated to ${newRole.replace('_', ' ')}`,
-      });
-    } catch (error) {
-      console.error('Error updating user role:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update user role",
-        variant: "destructive"
-      });
-    }
-  };
-
   useEffect(() => {
-    if (user) {
-      refreshData();
-    }
-  }, [user]);
+    refreshData();
+  }, []);
 
   // Set up real-time subscriptions
   useEffect(() => {
-    if (!user) return;
-
-    const channelName = `admin-data-${user.id}-${Date.now()}`;
-    
-    const channel = supabase
-      .channel(channelName)
+    const usersChannel = supabase
+      .channel(`admin-users-${Date.now()}-${Math.random()}`)
       .on(
         'postgres_changes',
         {
@@ -138,10 +108,14 @@ export const useAdminData = () => {
           table: 'profiles'
         },
         () => {
-          console.log('Profile change detected');
+          console.log('Users data changed, refreshing...');
           fetchUsers();
         }
       )
+      .subscribe();
+
+    const tasksChannel = supabase
+      .channel(`admin-tasks-${Date.now()}-${Math.random()}`)
       .on(
         'postgres_changes',
         {
@@ -150,22 +124,22 @@ export const useAdminData = () => {
           table: 'tasks'
         },
         () => {
-          console.log('Task change detected');
+          console.log('Tasks data changed, refreshing...');
           fetchTasks();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(usersChannel);
+      supabase.removeChannel(tasksChannel);
     };
-  }, [user]);
+  }, []);
 
   return {
     users,
     tasks,
     loading,
-    refreshData,
-    updateUserRole
+    refreshData
   };
 };
