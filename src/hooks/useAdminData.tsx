@@ -29,9 +29,23 @@ export interface AdminTask {
   attachments_count?: number;
 }
 
+export interface AdminProject {
+  id: string;
+  name: string;
+  description?: string;
+  status: string;
+  owner_id?: string;
+  owner_name?: string;
+  created_at: string;
+  updated_at?: string;
+  tasks_count?: number;
+  members_count?: number;
+}
+
 export const useAdminData = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [tasks, setTasks] = useState<AdminTask[]>([]);
+  const [projects, setProjects] = useState<AdminProject[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchUsers = async () => {
@@ -43,7 +57,7 @@ export const useAdminData = () => {
 
       if (error) throw error;
       
-      // Use mock emails for now since we can't access auth.users directly
+      // Transform users and add mock emails
       const transformedUsers = (data || []).map(profile => ({
         ...profile,
         email: `${profile.first_name?.toLowerCase() || 'user'}@teamtasker.com`
@@ -85,9 +99,44 @@ export const useAdminData = () => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      // Since we don't have a projects table yet, let's create some mock data
+      const mockProjects: AdminProject[] = [
+        {
+          id: '1',
+          name: 'TeamTasker Development',
+          description: 'Main development project for TeamTasker platform',
+          status: 'active',
+          owner_id: '1',
+          owner_name: 'Admin User',
+          created_at: new Date().toISOString(),
+          tasks_count: 15,
+          members_count: 5
+        },
+        {
+          id: '2',
+          name: 'Mobile App',
+          description: 'React Native mobile application',
+          status: 'planning',
+          owner_id: '2',
+          owner_name: 'Project Manager',
+          created_at: new Date().toISOString(),
+          tasks_count: 8,
+          members_count: 3
+        }
+      ];
+      
+      setProjects(mockProjects);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      setProjects([]);
+    }
+  };
+
   const refreshData = async () => {
     setLoading(true);
-    await Promise.all([fetchUsers(), fetchTasks()]);
+    await Promise.all([fetchUsers(), fetchTasks(), fetchProjects()]);
     setLoading(false);
   };
 
@@ -99,11 +148,11 @@ export const useAdminData = () => {
     email: string;
   }) => {
     try {
-      // In a real app, this would create an auth user first
-      // For now, we'll create a profile directly
+      // Generate a UUID for the new user profile
       const { data, error } = await supabase
         .from('profiles')
         .insert([{
+          id: crypto.randomUUID(),
           first_name: userData.first_name,
           last_name: userData.last_name,
           role: userData.role,
@@ -213,6 +262,57 @@ export const useAdminData = () => {
     }
   };
 
+  // Project CRUD operations (mock for now)
+  const createProject = async (projectData: {
+    name: string;
+    description?: string;
+    status: string;
+  }) => {
+    try {
+      const newProject: AdminProject = {
+        id: crypto.randomUUID(),
+        name: projectData.name,
+        description: projectData.description,
+        status: projectData.status,
+        owner_id: '1',
+        owner_name: 'Current User',
+        created_at: new Date().toISOString(),
+        tasks_count: 0,
+        members_count: 1
+      };
+
+      setProjects(prev => [newProject, ...prev]);
+      return { data: newProject, error: null };
+    } catch (error) {
+      console.error('Error creating project:', error);
+      return { data: null, error };
+    }
+  };
+
+  const updateProject = async (projectId: string, updates: Partial<AdminProject>) => {
+    try {
+      setProjects(prev => prev.map(project => 
+        project.id === projectId 
+          ? { ...project, ...updates, updated_at: new Date().toISOString() }
+          : project
+      ));
+      return { data: updates, error: null };
+    } catch (error) {
+      console.error('Error updating project:', error);
+      return { data: null, error };
+    }
+  };
+
+  const deleteProject = async (projectId: string) => {
+    try {
+      setProjects(prev => prev.filter(project => project.id !== projectId));
+      return { error: null };
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      return { error };
+    }
+  };
+
   useEffect(() => {
     refreshData();
   }, []);
@@ -220,6 +320,7 @@ export const useAdminData = () => {
   return {
     users,
     tasks,
+    projects,
     loading,
     refreshData,
     // User CRUD
@@ -229,6 +330,10 @@ export const useAdminData = () => {
     // Task CRUD
     createTask,
     updateTask,
-    deleteTask
+    deleteTask,
+    // Project CRUD
+    createProject,
+    updateProject,
+    deleteProject
   };
 };
