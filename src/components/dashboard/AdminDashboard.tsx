@@ -19,13 +19,15 @@ import {
   Eye,
   Search,
   Filter,
-  MoreHorizontal
+  MoreHorizontal,
+  FolderOpen
 } from "lucide-react";
 import { useAdminData } from "@/hooks/useAdminData";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import AdminUserManagement from "./AdminUserManagement";
 import AdminTaskManagement from "./AdminTaskManagement";
+import AdminProjectManagement from "./AdminProjectManagement";
 import AdminStats from "./AdminStats";
 
 interface AdminDashboardProps {
@@ -39,7 +41,18 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard = ({ user }: AdminDashboardProps) => {
-  const { users, tasks, loading, refreshData } = useAdminData();
+  const { 
+    users, 
+    tasks, 
+    loading, 
+    refreshData,
+    createUser,
+    updateUser,
+    deleteUser,
+    createTask,
+    updateTask,
+    deleteTask
+  } = useAdminData();
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -67,7 +80,7 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
             {isAdmin ? 'Admin Dashboard' : 'Project Manager Dashboard'}
           </h2>
           <p className="text-gray-600">
-            Manage users, tasks, and monitor system activity in real-time
+            Manage users, tasks, projects, and monitor system activity in real-time
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -95,6 +108,10 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
               User Management
             </TabsTrigger>
           )}
+          <TabsTrigger value="projects" className="data-[state=active]:bg-blue-50">
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Project Management
+          </TabsTrigger>
           <TabsTrigger value="tasks" className="data-[state=active]:bg-blue-50">
             <Activity className="h-4 w-4 mr-2" />
             Task Management
@@ -116,9 +133,18 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
               users={users}
               loading={loading}
               onRefresh={refreshData}
+              createUser={createUser}
+              updateUser={updateUser}
+              deleteUser={deleteUser}
             />
           </TabsContent>
         )}
+
+        <TabsContent value="projects" className="space-y-6">
+          <AdminProjectManagement 
+            canManageAll={isAdmin}
+          />
+        </TabsContent>
 
         <TabsContent value="tasks" className="space-y-6">
           <AdminTaskManagement 
@@ -126,6 +152,9 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
             loading={loading}
             onRefresh={refreshData}
             canManageAll={isAdmin}
+            createTask={createTask}
+            updateTask={updateTask}
+            deleteTask={deleteTask}
           />
         </TabsContent>
       </Tabs>

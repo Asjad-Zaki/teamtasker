@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Users, 
-  UserPlus, 
   Search,
   Filter,
   MoreHorizontal,
@@ -22,17 +21,32 @@ import {
 } from "lucide-react";
 import { AdminUser } from "@/hooks/useAdminData";
 import { toast } from "@/hooks/use-toast";
+import AddUserDialog from "./AddUserDialog";
 
 interface AdminUserManagementProps {
   users: AdminUser[];
   loading: boolean;
   onRefresh: () => void;
+  createUser: (userData: {
+    first_name: string;
+    last_name: string;
+    role: string;
+    email: string;
+  }) => Promise<{ data: any; error: any }>;
+  updateUser: (userId: string, updates: Partial<AdminUser>) => Promise<{ data: any; error: any }>;
+  deleteUser: (userId: string) => Promise<{ error: any }>;
 }
 
-const AdminUserManagement = ({ users, loading, onRefresh }: AdminUserManagementProps) => {
+const AdminUserManagement = ({ 
+  users, 
+  loading, 
+  onRefresh, 
+  createUser, 
+  updateUser, 
+  deleteUser 
+}: AdminUserManagementProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [showAddUser, setShowAddUser] = useState(false);
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,18 +80,53 @@ const AdminUserManagement = ({ users, loading, onRefresh }: AdminUserManagementP
 
   const handleRoleUpdate = async (userId: string, newRole: string) => {
     try {
-      // This would be implemented with actual API call
-      toast({
-        title: "Role Updated",
-        description: "User role has been updated successfully.",
-      });
-      onRefresh();
+      const { error } = await updateUser(userId, { role: newRole });
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update user role.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Role Updated",
+          description: "User role has been updated successfully.",
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update user role.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      try {
+        const { error } = await deleteUser(userId);
+        
+        if (error) {
+          toast({
+            title: "Error",
+            description: "Failed to delete user.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "User Deleted",
+            description: "User has been deleted successfully.",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete user.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -130,13 +179,7 @@ const AdminUserManagement = ({ users, loading, onRefresh }: AdminUserManagementP
             </SelectContent>
           </Select>
         </div>
-        <Button
-          onClick={() => setShowAddUser(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
+        <AddUserDialog onAddUser={createUser} />
       </div>
 
       {/* Users List */}
@@ -186,7 +229,12 @@ const AdminUserManagement = ({ users, loading, onRefresh }: AdminUserManagementP
                   <Button variant="outline" size="sm">
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-red-600 hover:text-red-700"
+                    onClick={() => handleDeleteUser(user.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>

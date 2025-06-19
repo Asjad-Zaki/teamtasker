@@ -26,9 +26,26 @@ interface AdminTaskManagementProps {
   loading: boolean;
   onRefresh: () => void;
   canManageAll: boolean;
+  createTask: (taskData: {
+    title: string;
+    description?: string;
+    priority: string;
+    assignee_id?: string;
+    due_date?: string;
+  }) => Promise<{ data: any; error: any }>;
+  updateTask: (taskId: string, updates: Partial<AdminTask>) => Promise<{ data: any; error: any }>;
+  deleteTask: (taskId: string) => Promise<{ error: any }>;
 }
 
-const AdminTaskManagement = ({ tasks, loading, onRefresh, canManageAll }: AdminTaskManagementProps) => {
+const AdminTaskManagement = ({ 
+  tasks, 
+  loading, 
+  onRefresh, 
+  canManageAll,
+  createTask,
+  updateTask,
+  deleteTask 
+}: AdminTaskManagementProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -73,16 +90,80 @@ const AdminTaskManagement = ({ tasks, loading, onRefresh, canManageAll }: AdminT
 
   const handleStatusUpdate = async (taskId: string, newStatus: string) => {
     try {
-      // This would be implemented with actual API call
-      toast({
-        title: "Task Updated",
-        description: "Task status has been updated successfully.",
-      });
-      onRefresh();
+      const { error } = await updateTask(taskId, { status: newStatus });
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update task status.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Task Updated",
+          description: "Task status has been updated successfully.",
+        });
+      }
     } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update task status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (window.confirm("Are you sure you want to delete this task?")) {
+      try {
+        const { error } = await deleteTask(taskId);
+        
+        if (error) {
+          toast({
+            title: "Error",
+            description: "Failed to delete task.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Task Deleted",
+            description: "Task has been deleted successfully.",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete task.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleCreateTask = async () => {
+    try {
+      const { error } = await createTask({
+        title: "New Task",
+        description: "Task description",
+        priority: "medium"
+      });
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to create task.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Task Created",
+          description: "New task has been created successfully.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create task.",
         variant: "destructive",
       });
     }
@@ -151,7 +232,7 @@ const AdminTaskManagement = ({ tasks, loading, onRefresh, canManageAll }: AdminT
           </Select>
         </div>
         {canManageAll && (
-          <Button className="bg-blue-600 hover:bg-blue-700">
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleCreateTask}>
             <Plus className="h-4 w-4 mr-2" />
             Add Task
           </Button>
@@ -224,7 +305,12 @@ const AdminTaskManagement = ({ tasks, loading, onRefresh, canManageAll }: AdminT
                       <Button variant="outline" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleDeleteTask(task.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </>
