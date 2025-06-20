@@ -2,12 +2,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+type AppRole = 'admin' | 'project_manager' | 'developer' | 'tester' | 'viewer';
+
 export interface AdminUser {
   id: string;
   email?: string;
   first_name?: string;
   last_name?: string;
-  role: string;
+  role: AppRole;
   avatar_url?: string;
   created_at: string;
   updated_at?: string;
@@ -155,7 +157,7 @@ export const useAdminData = () => {
           id: crypto.randomUUID(),
           first_name: userData.first_name,
           last_name: userData.last_name,
-          role: userData.role,
+          role: userData.role as AppRole,
           avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email}`
         }])
         .select()
@@ -172,9 +174,15 @@ export const useAdminData = () => {
 
   const updateUser = async (userId: string, updates: Partial<AdminUser>) => {
     try {
+      // Ensure role is properly typed
+      const updateData: any = { ...updates };
+      if (updates.role) {
+        updateData.role = updates.role as AppRole;
+      }
+
       const { data, error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update(updateData)
         .eq('id', userId)
         .select()
         .single();

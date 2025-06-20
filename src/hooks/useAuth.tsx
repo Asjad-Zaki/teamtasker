@@ -4,12 +4,14 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
+type AppRole = 'admin' | 'project_manager' | 'developer' | 'tester' | 'viewer';
+
 interface Profile {
   id: string;
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
-  role: string;
+  role: AppRole;
   created_at: string;
   updated_at: string;
 }
@@ -137,9 +139,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (updates: Partial<Profile>) => {
     if (!user) return { error: new Error('No user logged in') };
 
+    // Ensure role is properly typed if it's being updated
+    const updateData: any = { ...updates };
+    if (updates.role) {
+      updateData.role = updates.role as AppRole;
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .update(updates)
+      .update(updateData)
       .eq('id', user.id);
 
     if (error) {
