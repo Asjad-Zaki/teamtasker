@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bell, LogOut, Plus, Search, Settings, Users } from "lucide-react";
+import { Bell, LogOut, Plus, Search, Settings, Users, Shield, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,7 @@ import UserManagement from "./UserManagement";
 import ProjectOverview from "./ProjectOverview";
 import NotificationPanel from "./NotificationPanel";
 import AddTaskDialog from "./AddTaskDialog";
+import AdminDashboard from "./AdminDashboard";
 
 interface DashboardProps {
   user: {
@@ -42,12 +43,38 @@ const Dashboard = ({ user }: DashboardProps) => {
     return colors[role as keyof typeof colors] || "bg-gray-500";
   };
 
-  const canManageUsers = user.role === "admin";
-  const canManageProjects = user.role === "admin" || user.role === "project_manager";
+  const getRoleDisplayName = (role: string) => {
+    const names = {
+      admin: "Admin",
+      project_manager: "Project Manager",
+      developer: "Developer",
+      tester: "Tester",
+      viewer: "Viewer"
+    };
+    return names[role as keyof typeof names] || role;
+  };
+
+  // Role-based permissions
+  const permissions = {
+    canManageUsers: user.role === "admin",
+    canCreateProjects: user.role === "admin" || user.role === "project_manager",
+    canDeleteProjects: user.role === "admin",
+    canCreateTasks: user.role === "admin" || user.role === "project_manager" || user.role === "developer",
+    canDeleteTasks: user.role === "admin" || user.role === "project_manager",
+    canEditTasks: user.role === "admin" || user.role === "project_manager" || user.role === "developer" || user.role === "tester",
+    canViewOnly: user.role === "viewer",
+    canComment: user.role !== "viewer",
+    canMarkTested: user.role === "tester" || user.role === "admin" || user.role === "project_manager"
+  };
 
   const handleLogout = async () => {
     await signOut();
   };
+
+  // For Admin users, show the AdminDashboard
+  if (user.role === "admin") {
+    return <AdminDashboard user={user} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -62,13 +89,15 @@ const Dashboard = ({ user }: DashboardProps) => {
               <h1 className="text-xl font-bold text-gray-900">TeamTasker</h1>
             </div>
             
-            <div className="hidden md:flex items-center space-x-2">
-              <Search className="h-4 w-4 text-gray-400" />
-              <Input 
-                placeholder="Search tasks, projects..." 
-                className="w-64 border-gray-200"
-              />
-            </div>
+            {!permissions.canViewOnly && (
+              <div className="hidden md:flex items-center space-x-2">
+                <Search className="h-4 w-4 text-gray-400" />
+                <Input 
+                  placeholder="Search tasks, projects..." 
+                  className="w-64 border-gray-200"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-4">
@@ -95,7 +124,7 @@ const Dashboard = ({ user }: DashboardProps) => {
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-900">{user.name}</span>
                   <Badge className={`${getRoleColor(user.role)} text-white text-xs`}>
-                    {user.role.replace('_', ' ')}
+                    {getRoleDisplayName(user.role)}
                   </Badge>
                 </div>
               </div>
@@ -116,8 +145,17 @@ const Dashboard = ({ user }: DashboardProps) => {
               Welcome back, {user.name.split(' ')[0]}!
             </h2>
             <p className="text-gray-600">
-              Here's what's happening with your projects today.
+              {permissions.canViewOnly 
+                ? "Here's your read-only view of the projects and tasks."
+                : "Here's what's happening with your projects today."
+              }
             </p>
+            {permissions.canViewOnly && (
+              <div className="mt-2 flex items-center space-x-2 text-amber-600">
+                <Eye className="h-4 w-4" />
+                <span className="text-sm">You have view-only access</span>
+              </div>
+            )}
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -128,7 +166,7 @@ const Dashboard = ({ user }: DashboardProps) => {
               <TabsTrigger value="projects" className="data-[state=active]:bg-blue-50">
                 Projects
               </TabsTrigger>
-              {canManageUsers && (
+              {permissions.canManageUsers && (
                 <TabsTrigger value="users" className="data-[state=active]:bg-blue-50">
                   <Users className="h-4 w-4 mr-2" />
                   Users
@@ -143,7 +181,7 @@ const Dashboard = ({ user }: DashboardProps) => {
             <TabsContent value="tasks" className="space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold">Task Board</h3>
-                {canManageProjects && (
+                {permissions.canCreateTasks && (
                   <AddTaskDialog 
                     trigger={
                       <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
@@ -161,7 +199,7 @@ const Dashboard = ({ user }: DashboardProps) => {
               <ProjectOverview user={user} />
             </TabsContent>
 
-            {canManageUsers && (
+            {permissions.canManageUsers && (
               <TabsContent value="users" className="space-y-6">
                 <UserManagement user={user} />
               </TabsContent>
@@ -170,7 +208,49 @@ const Dashboard = ({ user }: DashboardProps) => {
             <TabsContent value="settings" className="space-y-6">
               <div className="bg-white rounded-lg border p-6">
                 <h3 className="text-lg font-semibold mb-4">Account Settings</h3>
-                <p className="text-gray-600">Settings panel coming soon...</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <h4 className="font-medium">Your Role</h4>
+                      <p className="text-sm text-gray-600">
+                        Current access level: {getRoleDisplayName(user.role)}
+                      </p>
+                    </div>
+                    <Badge className={`${getRoleColor(user.role)} text-white`}>
+                      {getRoleDisplayName(user.role)}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Permissions</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${permissions.canCreateTasks ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span>Create Tasks</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${permissions.canEditTasks ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span>Edit Tasks</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${permissions.canDeleteTasks ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span>Delete Tasks</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${permissions.canCreateProjects ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span>Create Projects</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${permissions.canComment ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span>Add Comments</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${permissions.canMarkTested ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span>Mark as Tested</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </TabsContent>
           </Tabs>

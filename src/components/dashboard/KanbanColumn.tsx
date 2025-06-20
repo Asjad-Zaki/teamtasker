@@ -23,6 +23,9 @@ interface KanbanColumnProps {
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => Promise<{ data: any; error: any }>;
   onDeleteTask?: (taskId: string) => Promise<{ error: any }>;
   canEdit?: boolean;
+  canCreate?: boolean;
+  canDrag?: boolean;
+  userRole?: string;
 }
 
 const KanbanColumn = ({
@@ -35,13 +38,16 @@ const KanbanColumn = ({
   getLabelColor,
   onUpdateTask,
   onDeleteTask,
-  canEdit = true
+  canEdit = true,
+  canCreate = true,
+  canDrag = true,
+  userRole = 'developer'
 }: KanbanColumnProps) => {
   return (
     <div 
-      className="space-y-4"
-      onDragOver={onDragOver}
-      onDrop={(e) => onDrop(e, column.id)}
+      className={`space-y-4 ${canDrag ? '' : 'cursor-not-allowed'}`}
+      onDragOver={canDrag ? onDragOver : undefined}
+      onDrop={canDrag ? (e) => onDrop(e, column.id) : undefined}
     >
       <div className={`${column.color} rounded-lg p-4`}>
         <div className="flex items-center justify-between">
@@ -63,13 +69,23 @@ const KanbanColumn = ({
             onUpdateTask={onUpdateTask}
             onDeleteTask={onDeleteTask}
             canEdit={canEdit}
+            canDrag={canDrag}
+            userRole={userRole}
           />
         ))}
 
-        {column.id !== "done" && canEdit && (
+        {column.id !== "done" && canCreate && canEdit && (
           <Card className="border-dashed border-2 border-gray-300 hover:border-gray-400 transition-colors">
             <CardContent className="p-4 text-center">
               <AddTaskDialog status={column.id} />
+            </CardContent>
+          </Card>
+        )}
+        
+        {!canCreate && column.id !== "done" && (
+          <Card className="border-dashed border-2 border-gray-200 opacity-50">
+            <CardContent className="p-4 text-center text-gray-400 text-sm">
+              No permission to add tasks
             </CardContent>
           </Card>
         )}
