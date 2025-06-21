@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,8 @@ import {
 import { AdminUser } from "@/hooks/useAdminData";
 import { toast } from "@/hooks/use-toast";
 import AddUserDialog from "./AddUserDialog";
+
+type AppRole = 'admin' | 'project_manager' | 'developer' | 'tester' | 'viewer';
 
 interface AdminUserManagementProps {
   users: AdminUser[];
@@ -80,7 +81,7 @@ const AdminUserManagement = ({
 
   const handleRoleUpdate = async (userId: string, newRole: string) => {
     try {
-      const { error } = await updateUser(userId, { role: newRole });
+      const { error } = await updateUser(userId, { role: newRole as AppRole });
       
       if (error) {
         toast({
