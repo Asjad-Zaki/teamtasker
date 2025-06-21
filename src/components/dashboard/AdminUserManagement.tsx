@@ -301,15 +301,7 @@ const AdminUserManagement = ({
               </p>
             </div>
             {(!searchTerm && roleFilter === "all") && (
-              <AddUserDialog 
-                onAddUser={createUser}
-                trigger={
-                  <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add First Team Member
-                  </Button>
-                }
-              />
+              <AddUserDialog onAddUser={createUser} />
             )}
           </CardContent>
         </Card>
