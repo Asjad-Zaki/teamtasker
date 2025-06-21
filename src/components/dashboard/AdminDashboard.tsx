@@ -23,11 +23,14 @@ import {
   FolderOpen,
   Settings,
   Bell,
-  Zap
+  Zap,
+  ArrowLeft,
+  LogOut
 } from "lucide-react";
 import { useAdminData } from "@/hooks/useAdminData";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import AdminUserManagement from "./AdminUserManagement";
 import AdminTaskManagement from "./AdminTaskManagement";
@@ -58,12 +61,23 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
     deleteTask
   } = useAdminData();
   const { createNotification } = useNotifications();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
   const isAdmin = user.role === 'admin';
   const isProjectManager = user.role === 'project_manager';
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const handleBackToLanding = () => {
+    navigate('/');
+  };
 
   // Enhanced user creation with notifications
   const handleCreateUser = async (userData: {
@@ -82,7 +96,7 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
           user_id: notifyUser.id,
           type: 'user_added',
           title: 'New Team Member Added',
-          message: `${userData.first_name} ${userData.last_name} has been added as ${userData.role}`,
+          message: `${userData.first_name} ${userData.last_name} has been added as ${userData.role.replace('_', ' ')}`,
           read: false
         });
       });
@@ -111,11 +125,83 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
             user_id: notifyUser.id,
             type: 'user_added',
             title: 'User Role Updated',
-            message: `${updatedUser.first_name} ${updatedUser.last_name}'s role has been changed to ${updates.role}`,
+            message: `${updatedUser.first_name} ${updatedUser.last_name}'s role has been changed to ${updates.role.replace('_', ' ')}`,
             read: false
           });
         });
       }
+    }
+    
+    return result;
+  };
+
+  // Enhanced task update with notifications to all relevant users
+  const handleUpdateTask = async (taskId: string, updates: any) => {
+    const result = await updateTask(taskId, updates);
+    
+    if (!result.error) {
+      // Find the updated task
+      const updatedTask = tasks.find(t => t.id === taskId);
+      if (updatedTask) {
+        // Notify developers, testers, and other relevant roles
+        const relevantUsers = users.filter(u => 
+          u.id !== user.id && 
+          (u.role === 'developer' || u.role === 'tester' || u.role === 'project_manager')
+        );
+        
+        relevantUsers.forEach(async (notifyUser) => {
+          let notificationMessage = '';
+          if (updates.status) {
+            notificationMessage = `Task "${updatedTask.title}" status changed to ${updates.status}`;
+          } else if (updates.priority) {
+            notificationMessage = `Task "${updatedTask.title}" priority changed to ${updates.priority}`;
+          } else if (updates.assignee_id) {
+            notificationMessage = `Task "${updatedTask.title}" has been reassigned`;
+          } else {
+            notificationMessage = `Task "${updatedTask.title}" has been updated`;
+          }
+          
+          await createNotification({
+            user_id: notifyUser.id,
+            type: 'task_completed',
+            title: 'Task Updated by Admin',
+            message: notificationMessage,
+            read: false,
+            related_task_id: taskId
+          });
+        });
+      }
+      
+      toast({
+        title: "Task Updated",
+        description: "Task has been updated and team members have been notified.",
+      });
+    }
+    
+    return result;
+  };
+
+  // Enhanced task creation with notifications
+  const handleCreateTask = async (taskData: any) => {
+    const result = await createTask(taskData);
+    
+    if (!result.error) {
+      // Notify relevant team members about new task
+      const relevantUsers = users.filter(u => 
+        u.id !== user.id && 
+        (u.role === 'developer' || u.role === 'tester' || u.role === 'project_manager')
+      );
+      
+      relevantUsers.forEach(async (notifyUser) => {
+        await createNotification({
+          user_id: notifyUser.id,
+          type: 'user_added',
+          title: 'New Task Created',
+          message: `Admin created a new task: "${taskData.title}"`,
+          read: false,
+          related_task_id: result.data?.id
+        });
+      });
     }
     
     return result;
@@ -133,6 +219,10 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
             <p className="text-gray-600">
               Admin or Project Manager role required to access this dashboard.
             </p>
+            <Button onClick={handleBackToLanding} className="mt-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -147,6 +237,15 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
           <div className="flex items-center justify-between">
             <div className="space-y-2">
               <div className="flex items-center space-x-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBackToLanding}
+                  className="bg-white/80 backdrop-blur-sm border-white/30 hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Home
+                </Button>
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
@@ -179,6 +278,14 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
                   {isAdmin ? 'Admin' : 'PM'}
                 </Badge>
               </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleLogout}
+                className="bg-white/80 backdrop-blur-sm border-white/30 hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl text-red-600 hover:text-red-700"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -259,8 +366,8 @@ const AdminDashboard = ({ user }: AdminDashboardProps) => {
                 loading={loading}
                 onRefresh={refreshData}
                 canManageAll={isAdmin}
-                createTask={createTask}
-                updateTask={updateTask}
+                createTask={handleCreateTask}
+                updateTask={handleUpdateTask}
                 deleteTask={deleteTask}
               />
             </div>

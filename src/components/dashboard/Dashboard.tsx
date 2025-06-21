@@ -3,11 +3,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Bell, LogOut, Plus, Search, Settings, Users, Shield, Eye } from "lucide-react";
+import { Bell, LogOut, Plus, Search, Settings, Users, Shield, Eye, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useNavigate } from "react-router-dom";
 import KanbanBoard from "./KanbanBoard";
 import UserManagement from "./UserManagement";
 import ProjectOverview from "./ProjectOverview";
@@ -29,18 +30,19 @@ interface DashboardProps {
 const Dashboard = ({ user }: DashboardProps) => {
   const { signOut } = useAuth();
   const { unreadCount } = useNotifications();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("tasks");
   const [showNotifications, setShowNotifications] = useState(false);
 
   const getRoleColor = (role: string) => {
     const colors = {
-      admin: "bg-red-500",
-      project_manager: "bg-blue-500", 
-      developer: "bg-green-500",
-      tester: "bg-yellow-500",
-      viewer: "bg-gray-500"
+      admin: "bg-gradient-to-r from-red-500 to-pink-500",
+      project_manager: "bg-gradient-to-r from-blue-500 to-cyan-500", 
+      developer: "bg-gradient-to-r from-green-500 to-emerald-500",
+      tester: "bg-gradient-to-r from-yellow-500 to-orange-500",
+      viewer: "bg-gradient-to-r from-gray-500 to-slate-500"
     };
-    return colors[role as keyof typeof colors] || "bg-gray-500";
+    return colors[role as keyof typeof colors] || "bg-gradient-to-r from-gray-500 to-slate-500";
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -69,6 +71,11 @@ const Dashboard = ({ user }: DashboardProps) => {
 
   const handleLogout = async () => {
     await signOut();
+    navigate('/');
+  };
+
+  const handleBackToLanding = () => {
+    navigate('/');
   };
 
   // For Admin and Project Manager users, show the AdminDashboard
@@ -77,16 +84,26 @@ const Dashboard = ({ user }: DashboardProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Enhanced Header with 3D design */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-white/20 shadow-xl">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBackToLanding}
+              className="bg-white/80 backdrop-blur-sm border-white/30 hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
+            </Button>
+            
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg transform rotate-3 hover:rotate-0 transition-transform duration-300">
                 <span className="text-white font-bold text-sm">TT</span>
               </div>
-              <h1 className="text-xl font-bold text-gray-900">TeamTasker</h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">TeamTasker</h1>
             </div>
             
             {!permissions.canViewOnly && (
@@ -94,7 +111,7 @@ const Dashboard = ({ user }: DashboardProps) => {
                 <Search className="h-4 w-4 text-gray-400" />
                 <Input 
                   placeholder="Search tasks, projects..." 
-                  className="w-64 border-gray-200"
+                  className="w-64 bg-white/80 backdrop-blur-sm border-white/30 shadow-lg"
                 />
               </div>
             )}
@@ -105,32 +122,39 @@ const Dashboard = ({ user }: DashboardProps) => {
               variant="ghost"
               size="sm"
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative"
+              className="relative bg-white/80 backdrop-blur-sm border-white/30 hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl"
             >
               <Bell className="h-4 w-4" />
               {unreadCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-500 text-white text-xs">
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs border-2 border-white shadow-lg">
                   {unreadCount}
                 </Badge>
               )}
             </Button>
 
-            <div className="flex items-center space-x-2">
-              <Avatar className="h-8 w-8">
+            <div className="flex items-center space-x-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-white/30">
+              <Avatar className="h-8 w-8 ring-2 ring-white/50 shadow-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>{user.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-600 text-white font-semibold">
+                  {user.name.split(' ').map(n => n[0]).join('')}
+                </AvatarFallback>
               </Avatar>
               <div className="hidden md:block">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-900">{user.name}</span>
-                  <Badge className={`${getRoleColor(user.role)} text-white text-xs`}>
+                  <Badge className={`${getRoleColor(user.role)} text-white text-xs border-0 shadow-lg`}>
                     {getRoleDisplayName(user.role)}
                   </Badge>
                 </div>
               </div>
             </div>
 
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="bg-white/80 backdrop-blur-sm border-white/30 hover:bg-white/90 transition-all duration-300 shadow-lg hover:shadow-xl text-red-600 hover:text-red-700"
+            >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
@@ -141,113 +165,122 @@ const Dashboard = ({ user }: DashboardProps) => {
         {/* Main Content */}
         <main className="flex-1 p-6">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Welcome back, {user.name.split(' ')[0]}!
-            </h2>
-            <p className="text-gray-600">
-              {permissions.canViewOnly 
-                ? "Here's your read-only view of the projects and tasks."
-                : "Here's what's happening with your projects today."
-              }
-            </p>
-            {permissions.canViewOnly && (
-              <div className="mt-2 flex items-center space-x-2 text-amber-600">
-                <Eye className="h-4 w-4" />
-                <span className="text-sm">You have view-only access</span>
-              </div>
-            )}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/30 shadow-xl p-6">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
+                Welcome back, {user.name.split(' ')[0]}!
+              </h2>
+              <p className="text-gray-600">
+                {permissions.canViewOnly 
+                  ? "Here's your read-only view of the projects and tasks."
+                  : "Here's what's happening with your projects today."
+                }
+              </p>
+              {permissions.canViewOnly && (
+                <div className="mt-2 flex items-center space-x-2 text-amber-600 bg-amber-50 rounded-lg p-3 border border-amber-200">
+                  <Eye className="h-4 w-4" />
+                  <span className="text-sm font-medium">You have view-only access</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="bg-white border">
-              <TabsTrigger value="tasks" className="data-[state=active]:bg-blue-50">
+            <TabsList className="bg-white/80 backdrop-blur-sm border border-white/30 shadow-xl rounded-xl p-2">
+              <TabsTrigger 
+                value="tasks" 
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300"
+              >
                 Task Board
               </TabsTrigger>
-              <TabsTrigger value="projects" className="data-[state=active]:bg-blue-50">
+              <TabsTrigger 
+                value="projects" 
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300"
+              >
                 Projects
               </TabsTrigger>
               {permissions.canManageUsers && (
-                <TabsTrigger value="users" className="data-[state=active]:bg-blue-50">
+                <TabsTrigger 
+                  value="users" 
+                  className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-blue-500 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300"
+                >
                   <Users className="h-4 w-4 mr-2" />
                   Users
                 </TabsTrigger>
               )}
-              <TabsTrigger value="settings" className="data-[state=active]:bg-blue-50">
+              <TabsTrigger 
+                value="settings" 
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-red-500 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300"
+              >
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="tasks" className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Task Board</h3>
-                {permissions.canCreateTasks && (
-                  <AddTaskDialog 
-                    trigger={
-                      <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                        <Plus className="h-4 w-4 mr-2" />
-                        New Task
-                      </Button>
-                    }
-                  />
-                )}
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/30 shadow-xl p-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Task Board</h3>
+                  {permissions.canCreateTasks && (
+                    <AddTaskDialog 
+                      trigger={
+                        <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                          <Plus className="h-4 w-4 mr-2" />
+                          New Task
+                        </Button>
+                      }
+                    />
+                  )}
+                </div>
+                <KanbanBoard user={user} />
               </div>
-              <KanbanBoard user={user} />
             </TabsContent>
 
             <TabsContent value="projects" className="space-y-6">
-              <ProjectOverview user={user} />
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/30 shadow-xl p-8">
+                <ProjectOverview user={user} />
+              </div>
             </TabsContent>
 
             {permissions.canManageUsers && (
               <TabsContent value="users" className="space-y-6">
-                <UserManagement user={user} />
+                <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/30 shadow-xl p-8">
+                  <UserManagement user={user} />
+                </div>
               </TabsContent>
             )}
 
             <TabsContent value="settings" className="space-y-6">
-              <div className="bg-white rounded-lg border p-6">
-                <h3 className="text-lg font-semibold mb-4">Account Settings</h3>
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/30 shadow-xl p-8">
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">Account Settings</h3>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-white/50 shadow-lg">
                     <div>
-                      <h4 className="font-medium">Your Role</h4>
+                      <h4 className="font-semibold text-lg">Your Role</h4>
                       <p className="text-sm text-gray-600">
                         Current access level: {getRoleDisplayName(user.role)}
                       </p>
                     </div>
-                    <Badge className={`${getRoleColor(user.role)} text-white`}>
+                    <Badge className={`${getRoleColor(user.role)} text-white border-0 shadow-lg`}>
                       {getRoleDisplayName(user.role)}
                     </Badge>
                   </div>
                   
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Permissions</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${permissions.canCreateTasks ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        <span>Create Tasks</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${permissions.canEditTasks ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        <span>Edit Tasks</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${permissions.canDeleteTasks ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        <span>Delete Tasks</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${permissions.canCreateProjects ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        <span>Create Projects</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${permissions.canComment ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        <span>Add Comments</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${permissions.canMarkTested ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                        <span>Mark as Tested</span>
-                      </div>
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-lg">Permissions</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {[
+                        { label: "Create Tasks", enabled: permissions.canCreateTasks },
+                        { label: "Edit Tasks", enabled: permissions.canEditTasks },
+                        { label: "Delete Tasks", enabled: permissions.canDeleteTasks },
+                        { label: "Create Projects", enabled: permissions.canCreateProjects },
+                        { label: "Add Comments", enabled: permissions.canComment },
+                        { label: "Mark as Tested", enabled: permissions.canMarkTested }
+                      ].map((permission, index) => (
+                        <div key={index} className="flex items-center space-x-3 p-4 bg-white/60 backdrop-blur-sm rounded-lg border border-white/30 shadow-lg">
+                          <div className={`w-3 h-3 rounded-full shadow-lg ${permission.enabled ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-red-400 to-pink-500'}`}></div>
+                          <span className="font-medium">{permission.label}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

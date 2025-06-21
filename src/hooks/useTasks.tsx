@@ -19,6 +19,7 @@ export interface Task {
   attachments_count?: number;
   created_at?: string;
   updated_at?: string;
+  created_by?: string;
 }
 
 export const useTasks = () => {
@@ -51,9 +52,14 @@ export const useTasks = () => {
 
   const createTask = async (taskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      const taskWithCreator = {
+        ...taskData,
+        created_by: user?.id
+      };
+
       const { data, error } = await supabase
         .from('tasks')
-        .insert([taskData])
+        .insert([taskWithCreator])
         .select()
         .single();
 
@@ -67,13 +73,36 @@ export const useTasks = () => {
 
       setTasks(prev => [newTask, ...prev]);
 
-      // Create notification for task creation
+      // Create notification for task creation - notify all relevant users
+      const { data: allUsers } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .neq('id', user?.id);
+
+      if (allUsers) {
+        const relevantUsers = allUsers.filter(u => 
+          u.role === 'developer' || u.role === 'tester' || u.role === 'project_manager' || u.role === 'admin'
+        );
+
+        relevantUsers.forEach(async (notifyUser) => {
+          await createNotification({
+            user_id: notifyUser.id,
+            type: 'user_added',
+            title: 'New Task Created',
+            message: `A new task "${taskData.title}" has been created`,
+            read: false,
+            related_task_id: newTask.id
+          });
+        });
+      }
+
+      // Special notification for assignee if different from creator
       if (taskData.assignee_id && taskData.assignee_id !== user?.id) {
         await createNotification({
           user_id: taskData.assignee_id,
           type: 'user_added',
-          title: 'New Task Assigned',
-          message: `You have been assigned to task: ${taskData.title}`,
+          title: 'Task Assigned to You',
+          message: `You have been assigned to task: "${taskData.title}"`,
           read: false,
           related_task_id: newTask.id
         });
@@ -107,16 +136,57 @@ export const useTasks = () => {
         task.id === taskId ? updatedTask : task
       ));
 
-      // Create notification for status change to 'done'
-      if (updates.status === 'done' && updatedTask.assignee_id) {
-        await createNotification({
-          user_id: updatedTask.assignee_id,
-          type: 'task_completed',
-          title: 'Task Completed',
-          message: `Task "${updatedTask.title}" has been marked as completed`,
-          read: false,
-          related_task_id: taskId
+      // Enhanced notification system for task updates
+      const { data: allUsers } = await supabase
+        .from('profiles')
+        .select('id, role, first_name, last_name')
+        .neq('id', user?.id);
+
+      if (allUsers) {
+        let notificationMessage = '';
+        let notificationType: 'task_completed' | 'user_added' = 'user_added';
+
+        // Determine notification message based on what was updated
+        if (updates.status === 'done') {
+          notificationMessage = `Task "${updatedTask.title}" has been completed`;
+          notificationType = 'task_completed';
+        } else if (updates.status) {
+          notificationMessage = `Task "${updatedTask.title}" status changed to ${updates.status}`;
+        } else if (updates.priority) {
+          notificationMessage = `Task "${updatedTask.title}" priority changed to ${updates.priority}`;
+        } else if (updates.assignee_id) {
+          notificationMessage = `Task "${updatedTask.title}" has been reassigned`;
+        } else {
+          notificationMessage = `Task "${updatedTask.title}" has been updated`;
+        }
+
+        // Notify relevant users (developers, testers, project managers, admins)
+        const relevantUsers = allUsers.filter(u => 
+          u.role === 'developer' || u.role === 'tester' || u.role === 'project_manager' || u.role === 'admin'
+        );
+
+        relevantUsers.forEach(async (notifyUser) => {
+          await createNotification({
+            user_id: notifyUser.id,
+            type: notificationType,
+            title: 'Task Updated',
+            message: notificationMessage,
+            read: false,
+            related_task_id: taskId
+          });
         });
+
+        // Special notification for new assignee
+        if (updates.assignee_id && updates.assignee_id !== user?.id) {
+          await createNotification({
+            user_id: updates.assignee_id,
+            type: 'user_added',
+            title: 'Task Assigned to You',
+            message: `You have been assigned to task: "${updatedTask.title}"`,
+            read: false,
+            related_task_id: taskId
+          });
+        }
       }
 
       return { data: updatedTask, error: null };
@@ -128,6 +198,9 @@ export const useTasks = () => {
 
   const deleteTask = async (taskId: string) => {
     try {
+      // Get task details before deletion for notification
+      const taskToDelete = tasks.find(t => t.id === taskId);
+      
       const { error } = await supabase
         .from('tasks')
         .delete()
@@ -136,6 +209,31 @@ export const useTasks = () => {
       if (error) throw error;
 
       setTasks(prev => prev.filter(task => task.id !== taskId));
+
+      // Notify relevant users about task deletion
+      if (taskToDelete) {
+        const { data: allUsers } = await supabase
+          .from('profiles')
+          .select('id, role')
+          .neq('id', user?.id);
+
+        if (allUsers) {
+          const relevantUsers = allUsers.filter(u => 
+            u.role === 'developer' || u.role === 'tester' || u.role === 'project_manager' || u.role === 'admin'
+          );
+
+          relevantUsers.forEach(async (notifyUser) => {
+            await createNotification({
+              user_id: notifyUser.id,
+              type: 'user_added',
+              title: 'Task Deleted',
+              message: `Task "${taskToDelete.title}" has been deleted`,
+              read: false
+            });
+          });
+        }
+      }
+
       return { error: null };
     } catch (error) {
       console.error('Error deleting task:', error);
