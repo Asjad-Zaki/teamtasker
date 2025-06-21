@@ -71,8 +71,8 @@ const Dashboard = ({ user }: DashboardProps) => {
     await signOut();
   };
 
-  // For Admin users, show the AdminDashboard
-  if (user.role === "admin") {
+  // For Admin and Project Manager users, show the AdminDashboard
+  if (user.role === "admin" || user.role === "project_manager") {
     return <AdminDashboard user={user} />;
   }
 
